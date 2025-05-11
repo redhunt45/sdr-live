@@ -1,8 +1,21 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Virtual Environments
+# Virtual environments
 .venv/
 env/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Logs
+*.log
+
+# Test cache
+.pytest_cache/
+
+# Pip dependency lock
+pip-log.txt
 
 # dependencies
 /node_modules
