@@ -22,6 +22,7 @@ def root():
 async def get_recordings(
     date: str = Query(None),
     time: str = Query(None),
+    limit: int = Query(None),
     db: AsyncSession = Depends(database.get_db)
 ):
     query = select(models.Recording)
@@ -37,7 +38,10 @@ async def get_recordings(
             query = query.where(models.Recording.timestamp >= dt, models.Recording.timestamp < dt_end)
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid date/time format")
-    result = await db.execute(query.order_by(models.Recording.timestamp.desc()))
+    query = query.order_by(models.Recording.timestamp.desc())
+    if limit:
+        query = query.limit(limit)
+    result = await db.execute(query)
     recordings = result.scalars().all()
     return [
         {
@@ -109,14 +113,14 @@ async def upload_audio(
         duration=duration,
         source=source,
         url=file_path
-    ).returning(models.Recording)
+    ).returning(models.Recording.id, models.Recording.timestamp, models.Recording.duration, models.Recording.source, models.Recording.url)
     result = await db.execute(stmt)
     await db.commit()
     rec = result.fetchone()
     return {
-        "id": rec.id,
-        "timestamp": rec.timestamp,
-        "duration": rec.duration,
-        "source": rec.source,
-        "url": rec.url
+        "id": rec[0],
+        "timestamp": rec[1],
+        "duration": rec[2],
+        "source": rec[3],
+        "url": rec[4]
     } 

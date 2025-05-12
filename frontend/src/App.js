@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
@@ -11,20 +11,37 @@ import Search from './components/Search';
 import RecordingsTable from './components/RecordingsTable';
 
 function App() {
-  const [liveSrc] = useState('/stream/live');
+  const [liveSrc, setLiveSrc] = useState('/stream/live');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedAudio, setSelectedAudio] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [recentRecordings, setRecentRecordings] = useState([]);
+
+  // Fetch recent recordings for Live Stream tab
+  useEffect(() => {
+    fetch('/recordings?limit=5')
+      .then(res => res.json())
+      .then(data => setRecentRecordings(data))
+      .catch(() => setRecentRecordings([]));
+  }, []);
 
   const handleSearch = async (date, time) => {
     setLoading(true);
     setError(null);
     try {
+      // Convert date to YYYY-MM-DD
+      const formattedDate = date ? new Date(date).toISOString().slice(0, 10) : '';
+      // Convert time to HH:MM (24-hour)
+      let formattedTime = '';
+      if (time) {
+        const d = new Date(`1970-01-01T${time}`);
+        formattedTime = d.toTimeString().slice(0, 5);
+      }
       let url = `/recordings`;
       const params = [];
-      if (date) params.push(`date=${encodeURIComponent(date)}`);
-      if (time) params.push(`time=${encodeURIComponent(time)}`);
+      if (formattedDate) params.push(`date=${encodeURIComponent(formattedDate)}`);
+      if (formattedTime) params.push(`time=${encodeURIComponent(formattedTime)}`);
       if (params.length) url += `?${params.join('&')}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch recordings');
@@ -51,7 +68,22 @@ function App() {
             <Row>
               <Col md={8} className="mx-auto">
                 <h4>Live Stream</h4>
-                <AudioPlayer src={liveSrc} live />
+                <AudioPlayer src={selectedAudio || liveSrc} live={!selectedAudio} />
+                <div className="mt-4">
+                  <h5>Recent Recordings</h5>
+                  <ul className="list-group">
+                    {recentRecordings.map(rec => (
+                      <li key={rec.id} className="list-group-item d-flex justify-content-between align-items-center">
+                        <span>
+                          {new Date(rec.timestamp).toLocaleString()} &mdash; {rec.duration}s {rec.source && `— ${rec.source}`}
+                        </span>
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => setSelectedAudio(`/stream/${rec.id}`)}>
+                          Play
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </Col>
             </Row>
           </Tab>
